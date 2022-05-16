@@ -1,5 +1,4 @@
 
-
 const assert = cond => {if(!cond) {
   throw new Error('assertion failed');
 }}
