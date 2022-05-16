@@ -1,0 +1,95 @@
+
+
+const assert = cond => {if(!cond) {
+  throw new Error('assertion failed');
+}}
+const _lastNum = arr => Number(arr.slice(-1));
+const _lastNum0 = arr => (arr.length===0) ? 0 : _lastNum(arr);
+const _cumsum = arr => arr.reduce((acc,e)=>[...acc, _lastNum0(acc)+e],[]);
+const _sum = arr => arr.reduce((s,x)=>s+x,0);
+// const _mutislice = (str, arr) => _cumsum(arr).reduce((acc,x)=>[...acc, str.substring(_lastNum0[acc],x)], []);
+const _mutislice0 = (str, arr) => _cumsum(arr).map((si,i,cums)=>str.substring(i===0?0:cums[i-1], cums[i]));
+const unicodeLength = str => [...str].length;
+//tests();
+
+function consumeStream(__stdin, muwMuch, consumer) {
+  let buffstr = '';
+  let countr = 0;
+  function consumeThisMuch(hm, isLastPiece) {
+    const consumeLen = _sum(hm); // outchunkLen
+    assert(consumeLen <= buffstr.length && consumeLen > 0);
+    const outchunkTuple = _mutislice0(buffstr, hm);
+    buffstr = buffstr.slice(consumeLen);
+    countr = countr - consumeLen;
+    consumer(outchunkTuple, isLastPiece);
+  }
+  function push_as_much_ripechunks_as_you_can() {
+    while(true) {
+      const hm = muwMuch(buffstr);
+      if (hm === null) break;
+      consumeThisMuch(hm, false);
+    }
+  }
+  function bring(inchunk) {
+    buffstr = buffstr + inchunk;
+    countr = countr + inchunk.length;
+    push_as_much_ripechunks_as_you_can();
+  }
+  function bring_end() {
+    push_as_much_ripechunks_as_you_can(); // in full (ripe) chunks
+    // non-full (unripe) chunks:  -> line separator cannot be found
+    if(buffstr.length > 0) {
+      /*
+      countr = countr - buffstr.length;
+      buffstr = '';
+      consumer([buffstr, ''], true);
+      */
+      consumeThisMuch([buffstr.length, ''], true);
+    } else {
+      // keep it or lose it?
+      //consumer(outchunksTuple, true); //for last empty line? no. This is when there is no line. no buffer content.
+    }
+    assert(countr === 0); // integrity test at end of it all
+  }
+  function attach_stream(_stdin) {
+    _stdin.on('data', inchunk => bring(inchunk.toString()));
+    _stdin.on('end',() => bring_end());
+  }
+  attach_stream(__stdin);
+}
+// todo: chain output (already 3 stages)
+// toodo: renme re -> newline_split_re
+function processio(inpipe, re, transfline, outpipe) {
+consumeStream(inpipe,
+  /*acceptor*/ (_buffstr) => {
+    // by returnning a tuple of numbers, decides how much of this content wil be taken
+    const m = new RegExp(re).exec(_buffstr);
+    if (!m) return null; // no full-chunk. wait for mroe input
+    // m[1] is trivially === '\n'
+    const l = [m.index, m[1].length]; // index of the separator in the string, length of separator
+    assert(l[0] + l[1] > 0); //assert(m.index > 0);
+    const hm=l;
+    assert(_sum(hm) <= _buffstr.length && _sum(hm) > 0);
+    return l; // discharge size
+  },
+  /*consumer*/(outchunkTuple, isLastPiece) => {
+    assert(outchunkTuple.length === 2);
+    // If the last chunk of input is empty, this will not be called.
+    // However, outchunkTuple[0] can be empty in other cases
+    const out = transfline(outchunkTuple[0]); // todo: filter-like
+    if (out !== null && out !== undefined) {
+      outpipe.write(out);
+
+      // separator (newline) part
+      const transfline2 = (x) => x; // preserve the newline
+      const transfline3 = (x) => DEBUG_CANDLE ? ((isLastPiece?'🕯 ':'⏎ ') + x) : x;
+      outpipe.write(  transfline3( transfline2(outchunkTuple[1]) ) );
+    }
+  });
+}
+processio(process.stdin, /(\n)/, transfline, process.stdout);
+
+/*
+forked from https://github.com/sohale/snippets/blob/master/javascript/neat-filter-obfuscated.js
+forked from https://github.com/sohale/snippets/blob/master/javascript/neat-jsfilter.js
+*/
