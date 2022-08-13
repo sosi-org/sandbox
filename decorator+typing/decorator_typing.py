@@ -44,7 +44,26 @@ print(annots_dict['b'])
 # print(type(2))
 # print(int)
 
+print('inspect.signature(myfunc2):')
+print(inspect.signature(myfunc2))
+# (a: int, b: str = 5)
 
 # see `decohints``
 # https://stackoverflow.com/questions/47060133/python-3-type-hinting-for-decorator
 # pip install decohints
+
+
+# plan:
+"""
+@decorator([int, str])  # specify the "args struct"
+lambda (largs,kwargs):
+    ...
+"""
+
+#a = lambda (*largs, **kwargs):
+a = lambda largs, kwargs: \
+    print(largs) + \
+    print(kwargs)
+
+# plan failed miserably
+
